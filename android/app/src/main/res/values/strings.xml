@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">NewsScope</string>
+    <string name="title_activity_main">NewsScope</string>
+    <string name="package_name">com.kirubakaran.gossipagent</string>
+    <string name="custom_url_scheme">com.kirubakaran.gossipagent</string>
+</resources>

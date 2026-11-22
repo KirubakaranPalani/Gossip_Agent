@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "Gossip Agent — Headlines, with context",
-  "short_name": "Gossip Agent",
-  "description": "A quick, curious look at the stories shaping India and the world.",
+  "name": "NewsScope — Headlines, with context",
+  "short_name": "NewsScope",
+  "description": "A clear, curious look at the stories shaping India and the world.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#fbfaf7",

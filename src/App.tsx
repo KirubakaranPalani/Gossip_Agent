@@ -1,3 +1,5 @@
+import { App as CapacitorApp } from "@capacitor/app";
+import { Capacitor } from "@capacitor/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import type { NewsArticle, NewsCategory, NewsRegion } from "./services/news-api";
@@ -5,6 +7,7 @@ import { getNewsPage } from "./services/news-api";
 import { categoryName, formatDate, formatShortDate, formatTimeAgo, translate, type AppLanguage } from "./i18n";
 
 type MainTab = NewsRegion | "saved";
+type FontSize = "normal" | "large" | "extra-large";
 const categories: Array<{ label: string; value: NewsCategory }> = [
   { label: "savedStories", value: "all" },
   { label: "politics", value: "politics" },
@@ -24,10 +27,11 @@ function readSaved(): NewsArticle[] {
   }
 }
 
-function Icon({ name, size = 18 }: { name: "spark" | "search" | "bookmark" | "arrow" | "globe" | "india" | "clock" | "close" | "external" | "refresh"; size?: number }) {
+function Icon({ name, size = 18 }: { name: "spark" | "news" | "search" | "bookmark" | "arrow" | "globe" | "india" | "clock" | "close" | "external" | "refresh"; size?: number }) {
   const shared = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true as const };
   const paths: Record<typeof name, ReactNode> = {
     spark: <><path d="m12 3 1.35 5.65L19 10l-5.65 1.35L12 17l-1.35-5.65L5 10l5.65-1.35L12 3Z" /><path d="m19 16 .65 2.35L22 19l-2.35.65L19 22l-.65-2.35L16 19l2.35-.65L19 16Z" /></>,
+    news: <><path d="M6 4.5h12a1.5 1.5 0 0 1 1.5 1.5v13H6a3 3 0 0 1-3-3V7.5a3 3 0 0 1 3-3Z" /><path d="M8 8h7M8 11h4" /><circle cx="15.5" cy="15.5" r="2.8" /><path d="M12.8 15.5h5.4M15.5 12.7c.8.8 1.2 1.7 1.2 2.8s-.4 2-1.2 2.8c-.8-.8-1.2-1.7-1.2-2.8s.4-2 1.2-2.8Z" /></>,
     search: <><circle cx="10.8" cy="10.8" r="6.6" /><path d="m16 16 4.2 4.2" /></>,
     bookmark: <><path d="M6.5 4.5h11v16L12 17l-5.5 3.5v-16Z" /></>,
     arrow: <><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></>,
@@ -86,15 +90,48 @@ function ArticleDetail({ article, onBack, saved, language, onSave }: { article: 
   );
 }
 
+function ExitConfirmation({ language, onStay, onExit }: {
+  language: AppLanguage;
+  onStay: () => void;
+  onExit: () => void;
+}) {
+  return (
+    <div className="exit-dialog-backdrop" onClick={onStay}>
+      <section className="exit-dialog" role="alertdialog" aria-modal="true" aria-labelledby="exit-dialog-title" aria-describedby="exit-dialog-message" onClick={(event) => event.stopPropagation()}>
+        <span className="exit-dialog-mark" aria-hidden="true">?</span>
+        <h2 id="exit-dialog-title">{translate(language, "exitTitle")}</h2>
+        <p id="exit-dialog-message">{translate(language, "exitMessage")}</p>
+        <div className="exit-dialog-actions">
+          <button className="exit-stay-button" onClick={onStay}>{translate(language, "stayInApp")}</button>
+          <button className="exit-confirm-button" onClick={onExit}>{translate(language, "exitApp")}</button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function App() {
   const [language, setLanguage] = useState<AppLanguage>(() => {
     try { return window.localStorage.getItem("gossip-agent:language") === "ta" ? "ta" : "en"; }
     catch { return "en"; }
   });
+  const [fontSize, setFontSize] = useState<FontSize>(() => {
+    try {
+      const stored = window.localStorage.getItem("gossip-agent:font-size");
+      return stored === "large" || stored === "extra-large" ? stored : "normal";
+    } catch {
+      return "normal";
+    }
+  });
+  const [fontMenuOpen, setFontMenuOpen] = useState(false);
+  const [exitDialogOpen, setExitDialogOpen] = useState(false);
   const [tab, setTab] = useState<MainTab>("india");
   useEffect(() => {
     try { window.localStorage.setItem("gossip-agent:language", language); } catch { /* Storage may be unavailable. */ }
   }, [language]);
+  useEffect(() => {
+    try { window.localStorage.setItem("gossip-agent:font-size", fontSize); } catch { /* Storage may be unavailable. */ }
+  }, [fontSize]);
 
   const [category, setCategory] = useState<NewsCategory>("all");
   const [articles, setArticles] = useState<NewsArticle[]>([]);
@@ -110,6 +147,7 @@ function App() {
   const [savedArticles, setSavedArticles] = useState<NewsArticle[]>(readSaved);
   const [selectedArticle, setSelectedArticle] = useState<NewsArticle | null>(null);
   const sentinel = useRef<HTMLDivElement | null>(null);
+  const backActionRef = useRef<() => void>(() => undefined);
   const requestGeneration = useRef(0);
   const region: NewsRegion = tab === "world" ? "world" : "india";
   const savedIds = useMemo(() => new Set(savedArticles.map((article) => article.id)), [savedArticles]);
@@ -180,8 +218,60 @@ function App() {
     setSearchQuery("");
     setSearchPending(false);
     setTab(next);
+    setFontMenuOpen(false);
     if (next === "saved") setSearchOpen(false);
   }
+
+  function handleBackNavigation() {
+    if (exitDialogOpen) {
+      setExitDialogOpen(false);
+      return;
+    }
+    if (fontMenuOpen) {
+      setFontMenuOpen(false);
+      return;
+    }
+    if (selectedArticle) {
+      setSelectedArticle(null);
+      return;
+    }
+    if (category !== "all") {
+      setCategory("all");
+      return;
+    }
+    if (searchOpen) {
+      setSearchOpen(false);
+      setSearch("");
+      setSearchQuery("");
+      setSearchPending(false);
+      return;
+    }
+    if (tab !== "india") {
+      changeTab("india");
+      return;
+    }
+    setExitDialogOpen(true);
+  }
+
+  backActionRef.current = handleBackNavigation;
+
+  useEffect(() => {
+    if (Capacitor.getPlatform() !== "android") return;
+    let disposed = false;
+    let removeListener: (() => void) | undefined;
+    void CapacitorApp.addListener("backButton", () => backActionRef.current())
+      .then((listener) => {
+        if (disposed) {
+          void listener.remove();
+        } else {
+          removeListener = () => { void listener.remove(); };
+        }
+      });
+    return () => {
+      disposed = true;
+      removeListener?.();
+    };
+  }, []);
 
   function toggleSaved(article: NewsArticle) {
     setSavedArticles((current) => current.some((saved) => saved.id === article.id)
@@ -190,6 +280,7 @@ function App() {
   }
 
   function openArticle(article: NewsArticle) {
+    setFontMenuOpen(false);
     setSelectedArticle(article);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -224,13 +315,22 @@ function App() {
   const subtitle = tab === "saved" ? translate(language, "savedSubtitle") : tab === "india" ? translate(language, "indiaSubtitle") : translate(language, "worldSubtitle");
 
   return (
-    <div className="app-shell" lang={language === "ta" ? "ta" : "en"}>
-      <header className="topbar"><a className="brand" href="#home" onClick={(event) => { event.preventDefault(); changeTab("india"); }}><span className="brand-mark"><Icon name="spark" size={21} /></span><span className="brand-name">gossip<span>agent</span></span></a>
+    <div className="app-shell" data-font-size={fontSize} lang={language === "ta" ? "ta" : "en"}>
+      <header className="topbar"><a className="brand" href="#home" onClick={(event) => { event.preventDefault(); changeTab("india"); }}><span className="brand-mark"><Icon name="news" size={21} /></span><span className="brand-name">News<span>Scope</span></span></a>
         <div className="topbar-center"><span className="live-pip" />{translate(language, "liveFeed")}</div>
         <div className="topbar-actions"><span className="date-stamp">{formatShortDate(new Date(), language)}</span>
           <button className={`language-toggle ${language === "ta" ? "active" : ""}`} onClick={toggleLanguage} aria-label={translate(language, language === "en" ? "switchToTamil" : "switchToEnglish")} title={translate(language, language === "en" ? "switchToTamil" : "switchToEnglish")} aria-pressed={language === "ta"}>{translate(language, "languageSwitch")}</button>
+          <div className="font-size-control">
+            <button className={`font-size-trigger ${fontMenuOpen ? "active" : ""}`} onClick={() => setFontMenuOpen((open) => !open)} aria-label={translate(language, "textSize")} aria-haspopup="true" aria-expanded={fontMenuOpen}>Aa</button>
+            {fontMenuOpen && <div className="font-size-menu" role="radiogroup" aria-label={translate(language, "textSize")}>
+              {(["normal", "large", "extra-large"] as const).map((size) => {
+                const labelKey = size === "normal" ? "fontSizeNormal" : size === "large" ? "fontSizeLarge" : "fontSizeExtraLarge";
+                return <button key={size} className={`font-size-option ${fontSize === size ? "selected" : ""}`} role="radio" aria-checked={fontSize === size} onClick={() => { setFontSize(size); setFontMenuOpen(false); }}><span className={`font-size-sample font-size-sample-${size}`} aria-hidden="true">Aa</span><span>{translate(language, labelKey)}</span></button>;
+              })}
+            </div>}
+          </div>
           <button className={`icon-action ${searchOpen ? "active" : ""}`} onClick={() => { setSearchOpen((value) => !value); setSearch(""); }} aria-label={translate(language, "searchStories")}><Icon name={searchOpen ? "close" : "search"} size={18} /></button>
-          <button className="profile-dot" onClick={() => changeTab("saved")} aria-label={translate(language, "openSaved")}>G</button></div>
+          <button className="profile-dot" onClick={() => changeTab("saved")} aria-label={translate(language, "openSaved")}>N</button></div>
       </header>
 
       <div className="layout">
@@ -270,6 +370,7 @@ function App() {
         </main>
       </div>
 
+      {exitDialogOpen && <ExitConfirmation language={language} onStay={() => setExitDialogOpen(false)} onExit={() => { setExitDialogOpen(false); if (Capacitor.getPlatform() === "android") void CapacitorApp.exitApp(); }} />}
       <nav className="mobile-nav" aria-label={translate(language, "mainNavigation")}><button className={tab === "india" ? "active" : ""} onClick={() => changeTab("india")}><Icon name="india" size={19} /><span>{translate(language, "india")}</span></button><button className={tab === "world" ? "active" : ""} onClick={() => changeTab("world")}><Icon name="globe" size={19} /><span>{translate(language, "world")}</span></button><button className={tab === "saved" ? "active" : ""} onClick={() => changeTab("saved")}><Icon name="bookmark" size={18} /><span>{translate(language, "saved")}</span>{savedArticles.length > 0 && <i />}</button></nav>
     </div>
   );
