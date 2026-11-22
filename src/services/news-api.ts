@@ -28,7 +28,7 @@ export type NewsPage = {
   updatedAt: string;
 };
 
-const NEWS_API_URL = import.meta.env.VITE_NEWS_API_URL || "http://localhost:8080/api/v1/news";
+const NEWS_API_URL = import.meta.env.VITE_NEWS_API_URL || "https://gossip-agent-backend.onrender.com/api/v1/news";
 const PAGE_SIZE = 20;
 const CATEGORIES: readonly string[] = ["politics", "business", "technology", "science", "sports", "culture"];
 

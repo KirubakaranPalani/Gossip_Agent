@@ -4,14 +4,24 @@ A mobile-first news reader with India and World editions, topic filters, search,
 
 ## Run locally
 
-Start the news API at `http://localhost:8080`, then run the UI:
+For local development, copy `.env.example` to `.env` to use the backend at `http://localhost:8080`, then run:
 
 ```sh
 npm install
 npm run dev
 ```
 
-The UI uses `http://localhost:8080/api/v1/news` by default. Set `VITE_NEWS_API_URL` to change the endpoint. The API must allow the UI's origin through CORS (normally `http://localhost:5173` during local development).
+The production fallback is `https://gossip-agent-backend.onrender.com/api/v1/news`. Set `VITE_NEWS_API_URL` to override it. The API must allow the UI's origin through CORS (normally `http://localhost:5173` during local development).
+
+## Deploy to Cloudflare Workers
+
+The app is configured with the Cloudflare Vite plugin and Wrangler. Deploy with:
+
+```sh
+npm run deploy
+```
+
+Cloudflare Workers Builds can use `npm run deploy` as its deploy command. The frontend uses the Render backend URL above unless `VITE_NEWS_API_URL` is set in the Cloudflare build environment.
 
 ## News feed API
 

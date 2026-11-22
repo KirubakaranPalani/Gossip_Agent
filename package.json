@@ -6,20 +6,27 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview --host 0.0.0.0",
-    "typecheck": "tsc --noEmit"
+    "preview": "npm run build && wrangler dev",
+    "typecheck": "tsc --noEmit",
+    "deploy": "npm run build && wrangler deploy"
   },
-  "keywords": ["news", "reader", "gossip-agent"],
+  "keywords": [
+    "news",
+    "reader",
+    "gossip-agent"
+  ],
   "license": "ISC",
   "dependencies": {
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.70.1",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "typescript": "^7.0.2",
-    "vite": "^8.3.5"
+    "vite": "^8.3.5",
+    "wrangler": "^4.166.0"
   },
   "type": "module"
 }
